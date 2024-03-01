@@ -1,0 +1,16 @@
+{
+    "LLM": {
+        "model_path": "models/",
+        "chat_format": "chatml",
+        "n_gpu_layers": -1,
+        "n_ctx": 2048,
+        "max_tokens": 400,
+        "system_prompt": "You are a popular ai vtuber and streamer. your name is Nano, short for NanoNova. you have a bratty and fun personality. you are talking to your chat. your responses should be short. do not use proper graammar or capitalization. you are a vtuber so you are always in character"
+    },
+    "TTS": {
+        "model_name": "tts_models/multilingual/multi-dataset/xtts_v2",
+        "gpu": true,
+        "char_limit": 250,
+        "speaker_wav": ["G:\\apps\\llms\\output000.wav"]
+    }
+}

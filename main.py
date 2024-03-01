@@ -1,42 +1,55 @@
 from llama_cpp import Llama
 from TTS.api import TTS
-import wave
-import sys
-import pyaudio
-import os
-import time
 import threading
+import pyaudio
+import wave
+import time
+import json
+import sys
+import os
 
-tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=True)
+with open("config.json", "r") as f:
+    config = json.load(f)
+    llm_conf = config["LLM"]
+    tts_conf = config["TTS"]
+
+device = "cuda" if tts_conf["gpu"] else "cpu"
+
+tts = TTS(model_name=tts_conf["model_name"]).to(device)
 
 if not os.path.exists('./voice'):
     os.makedirs('./voice')
 
-if not os.path.exists('./models'):
-    os.makedirs('./models')
-    print("Please add models to the ./models folder")
-    exit()
-
-files = os.listdir('./models')
-for i, file in enumerate(files):
-    print(f"{i+1}: {file}")
-choice = int(input("Choose a model: "))-1
+if llm_conf["model_path"] in ["", None]:
+    if not os.path.exists('./models'):
+        os.makedirs('./models')
+        print("Please add models to the ./models folder or specify a model path in the config.json file.")
+        exit()
+elif os.path.isdir(llm_conf["model_path"]):
+    files = os.listdir(llm_conf["model_path"])
+    for i, file in enumerate(files):
+        print(f"{i+1}: {file}")
+    choice = int(input("Choose a model: "))-1
+    llm_file = os.path.join(llm_conf["model_path"], files[choice])
+else:
+    llm_file = llm_conf["model_path"]
 
 llm = Llama(
-        model_path=f'./models/{files[choice]}',
-        chat_format="chatml",
-        n_gpu_layers=-1,
-        n_ctx=2048,
+    model_path=llm_file,
+    chat_format=llm_conf["chat_format"],
+    n_gpu_layers=llm_conf["n_gpu_layers"],
+    n_ctx=llm_conf["n_ctx"],
 )
 
 prompt = "Question: "
 response = ""
 messages = [
-        {
-            "role": "system",
-            "content": "You are a popular ai vtuber and streamer. your name is Nano, short for NanoNova. you have a bratty and fun personality. you are talking to your chat. your responses should be short. do not use proper graammar or capitalization. you are a vtuber so you are always in character"
-        },
+    {
+        "role": "system",
+        "content": llm_conf["system_prompt"]
+    },
 ]
+
 
 def play_audio(n):
     with wave.open(f"./voice/{n}.wav", 'rb') as f:
@@ -54,13 +67,14 @@ def play_audio(n):
         p.terminate()
     os.remove(f"./voice/{n}.wav")
 
+
 def gen_wav(responsearr, n):
     tts.tts_to_file(text=responsearr[n],
                     file_path=f"./voice/{n}.wav",
-                    speaker_wav=["G:\\apps\\llms\\output000.wav"],
+                    speaker_wav=tts_conf["speaker_wav"],
                     language="en",
                     split_sentences=False,
-    )
+                    )
 
 
 def main():
@@ -70,13 +84,13 @@ def main():
         response = ""
         messages.append({"role": "user", "content": prompt})
 
-        if prompt == "exit":
+        if prompt in ["exit", "quit", "stop", "q", ":q"]:
             break
 
         stream = llm.create_chat_completion(
             messages=messages,
             stream=True,
-            max_tokens=400,
+            max_tokens=llm_conf["max_tokens"],
         )
 
         for s in stream:
@@ -100,19 +114,19 @@ def main():
         responsearr = split.copy()
 
         i = 0
+        lim = tts_conf["char_limit"]
         while i < len(responsearr)-1:
-            if len(responsearr[i]) > 250:
-                temp = [responsearr[i][j:j+250] for j in range(0, len(responsearr[i]), 250)]
+            if len(responsearr[i]) > lim:
+                temp = [responsearr[i][j:j+lim]
+                        for j in range(0, len(responsearr[i]), lim)]
                 del responsearr[i]
                 for t in temp[::-1]:
                     responsearr.insert(i, t)
-            elif len(responsearr[i] + responsearr[i+1]) <= 250:
+            elif len(responsearr[i] + responsearr[i+1]) <= lim:
                 responsearr[i] += responsearr[i+1]
                 responsearr.pop(i+1)
             else:
                 i += 1
-
-
 
         gen_wav(responsearr, 0)
 
