@@ -11,7 +11,7 @@
     "TTS": {
         "model_name": "tts_models/multilingual/multi-dataset/xtts_v2",
         "gpu": true,
-        "char_limit": 250,
-        "speaker_wav": ["G:\\apps\\llms\\output000.wav"]
+        "char_limit": 245,
+        "speaker_wav": ["G:\\apps\\llms\\reference.wav"]
     }
 }

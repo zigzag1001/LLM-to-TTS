@@ -1,5 +1,6 @@
 from llama_cpp import Llama
 from TTS.api import TTS
+from time import sleep
 import threading
 import pyaudio
 import wave
@@ -50,13 +51,17 @@ system_prompt = {
 messages = [system_prompt]
 
 
-def play_audio(n):
+def play_audio(n, device=None):
     with wave.open(f"./voice/{n}.wav", 'rb') as f:
         p = pyaudio.PyAudio()
+        info = p.get_device_info_by_index(device)
+        print(info.get('name'), info.get('index'))
         stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
                         channels=f.getnchannels(),
-                        rate=int(f.getframerate()*1.1),
-                        output=True)
+                        rate=int(f.getframerate()*1.15),
+                        output=True,
+                        output_device_index=device
+                        )
         data = f.readframes(1024)
         while data:
             stream.write(data)
@@ -64,29 +69,41 @@ def play_audio(n):
         stream.stop_stream()
         stream.close()
         p.terminate()
-    os.remove(f"./voice/{n}.wav")
+        print(f"Device {device} worked")
+    if device is None:
+        os.remove(f"./voice/{n}.wav")
 
 
 def gen_wav(responsearr, n):
-    tts.tts_to_file(text=responsearr[n],
-                    file_path=f"./voice/{n}.wav",
-                    speaker_wav=tts_conf["speaker_wav"],
-                    language="en",
-                    split_sentences=False,
-                    temperature=0.8
-                    )
+    try:
+        tts.tts_to_file(text=responsearr[n] + "\n\n",
+                        file_path=f"./voice/{n}.wav",
+                        speaker_wav=tts_conf["speaker_wav"],
+                        language="en",
+                        split_sentences=False,
+                        speed=0.7,
+                        )
+    except Exception as e:
+        print(e)
+        tts.tts_to_file(text="filtered",
+                        file_path=f"./voice/{n}.wav",
+                        speaker_wav=tts_conf["speaker_wav"],
+                        language="en",
+                        split_sentences=False,
+                        speed=0.7,
+                        )
 
 
 def main():
     while True:
-        print(messages)
 
         prompt = input("Question: ")
         response = ""
-        messages.append({"role": "user", "content": prompt})
 
         if prompt in ["exit", "quit", "stop", "q", ":q"]:
             break
+
+        messages.append({"role": "user", "content": prompt})
 
         if len(messages) > 5:
             messages.pop(1)
@@ -136,16 +153,34 @@ def main():
             else:
                 i += 1
 
+        p = pyaudio.PyAudio()
+        devices = p.get_device_count()
+        cable = None
+        for i in range(devices):
+            device_info = p.get_device_info_by_index(i)
+            if "CABLE Input (VB-Audio Virtual C" in device_info.get('name'):
+                print(f"Device {device_info.get('index')} is {device_info.get('name')}")
+                cable = device_info.get('index')
+                break
+
         gen_wav(responsearr, 0)
 
-        audio_thread = threading.Thread(target=play_audio, args=(0,))
+        audio_thread = threading.Thread(target=play_audio, args=(0, cable, ))
         audio_thread.start()
 
         for i in range(1, len(responsearr)):
             gen_wav(responsearr, i)
             audio_thread.join()
-            audio_thread = threading.Thread(target=play_audio, args=(i,))
+            audio_thread = threading.Thread(target=play_audio, args=(i, cable, ))
             audio_thread.start()
+
+        # devices = [4, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18, 25, 27, 29, 32, 34]
+        # gen_wav(responsearr, 0)
+        #
+        # for i in devices:
+        #     play_audio(0, i)
+
+
 
 
 if __name__ == "__main__":
