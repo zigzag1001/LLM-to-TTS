@@ -43,12 +43,11 @@ llm = Llama(
 
 prompt = "Question: "
 response = ""
-messages = [
-    {
+system_prompt = {
         "role": "system",
         "content": llm_conf["system_prompt"]
-    },
-]
+}
+messages = [system_prompt]
 
 
 def play_audio(n):
@@ -56,7 +55,7 @@ def play_audio(n):
         p = pyaudio.PyAudio()
         stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
                         channels=f.getnchannels(),
-                        rate=f.getframerate(),
+                        rate=int(f.getframerate()*1.1),
                         output=True)
         data = f.readframes(1024)
         while data:
@@ -74,11 +73,13 @@ def gen_wav(responsearr, n):
                     speaker_wav=tts_conf["speaker_wav"],
                     language="en",
                     split_sentences=False,
+                    temperature=0.8
                     )
 
 
 def main():
     while True:
+        print(messages)
 
         prompt = input("Question: ")
         response = ""
@@ -87,10 +88,14 @@ def main():
         if prompt in ["exit", "quit", "stop", "q", ":q"]:
             break
 
+        if len(messages) > 5:
+            messages.pop(1)
+
         stream = llm.create_chat_completion(
             messages=messages,
             stream=True,
             max_tokens=llm_conf["max_tokens"],
+            temperature=llm_conf["temperature"],
         )
 
         for s in stream:
@@ -101,6 +106,9 @@ def main():
                 response += parsed[keys[0]]
 
         messages.append({"role": "assistant", "content": response})
+
+        if len(messages) > 5:
+            messages.pop(1)
 
         # split response into sentences
         split = []
