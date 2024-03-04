@@ -58,7 +58,7 @@ def play_audio(n, device=None):
         print(info.get('name'), info.get('index'))
         stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
                         channels=f.getnchannels(),
-                        rate=int(f.getframerate()*1.15),
+                        rate=int(f.getframerate()*1),
                         output=True,
                         output_device_index=device
                         )
@@ -81,7 +81,6 @@ def gen_wav(responsearr, n):
                         speaker_wav=tts_conf["speaker_wav"],
                         language="en",
                         split_sentences=False,
-                        speed=0.7,
                         )
     except Exception as e:
         print(e)
@@ -90,7 +89,6 @@ def gen_wav(responsearr, n):
                         speaker_wav=tts_conf["speaker_wav"],
                         language="en",
                         split_sentences=False,
-                        speed=0.7,
                         )
 
 
