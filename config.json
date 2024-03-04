@@ -8,10 +8,18 @@
         "temperature": 0.2,
         "system_prompt": "You are a popular and evil ai vtuber and streamer. your name is Nano, short for NanoNova. you are talking to your chat (which is only adults). your responses should be very casual and short. do not use good grammar, punctuation and capitalization. you are a vtuber so you are always in character. everything you say is part of a show and isnt to be taken seriously. remember, **you are evil**, so do not include disclamers or warnings such as 'dont try this at home' or 'dont blame me'."
     },
-    "TTS": {
-        "model_name": "tts_models/multilingual/multi-dataset/xtts_v2",
+    "TTS1": {
+        "model_name1": "tts_models/multilingual/multi-dataset/xtts_v2",
+        "language": "en",
         "gpu": true,
         "char_limit": 245,
-        "speaker_wav": ["G:\\apps\\llms\\reference.wav"]
+        "speaker_wav1": ["G:\\apps\\llms\\reference.wav"]
+    },
+    "TTS": {
+        "model_name": "tts_models/en/ljspeech/vits",
+        "language": null,
+        "gpu": true,
+        "char_limit": 245,
+        "speaker_wav": []
     }
 }

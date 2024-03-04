@@ -1,13 +1,17 @@
+import time
+time1 = time.time()
+
 from llama_cpp import Llama
 from TTS.api import TTS
-from time import sleep
 import threading
 import pyaudio
+import whisper
 import wave
-import time
 import json
 import sys
 import os
+
+print(f"Imports took {time.time()-time1} seconds")
 
 with open("config.json", "r") as f:
     config = json.load(f)
@@ -16,7 +20,13 @@ with open("config.json", "r") as f:
 
 device = "cuda" if tts_conf["gpu"] else "cpu"
 
+time1 = time.time()
 tts = TTS(model_name=tts_conf["model_name"]).to(device)
+print(f"TTS load took {time.time()-time1} seconds")
+
+time1 = time.time()
+w_model = whisper.load_model("base.en")
+print(f"Whisper load took {time.time()-time1} seconds")
 
 if not os.path.exists('./voice'):
     os.makedirs('./voice')
@@ -35,12 +45,15 @@ elif os.path.isdir(llm_conf["model_path"]):
 else:
     llm_file = llm_conf["model_path"]
 
+time1 = time.time()
 llm = Llama(
     model_path=llm_file,
     chat_format=llm_conf["chat_format"],
     n_gpu_layers=llm_conf["n_gpu_layers"],
     n_ctx=llm_conf["n_ctx"],
+    verbose=False,
 )
+print(f"LLM load took {time.time()-time1} seconds")
 
 prompt = "Question: "
 response = ""
@@ -51,14 +64,35 @@ system_prompt = {
 messages = [system_prompt]
 
 
+def record_audio(device=None):
+    with wave.open(f"./voice/recorded.wav", 'wb') as f:
+        p = pyaudio.PyAudio()
+        info = p.get_device_info_by_index(device)
+        stream = p.open(format=pyaudio.paInt16,
+                    channels=1,
+                    rate=44100,
+                    input=True,
+                    input_device_index=device
+                    )
+        print("Recording...")
+        data = stream.read(44100*5)
+        print("Recording stopped")
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+        f.setnchannels(1)
+        f.setsampwidth(p.get_sample_size(pyaudio.paInt16))
+        f.setframerate(44100)
+        f.writeframes(data)
+
+
 def play_audio(n, device=None):
     with wave.open(f"./voice/{n}.wav", 'rb') as f:
         p = pyaudio.PyAudio()
         info = p.get_device_info_by_index(device)
-        print(info.get('name'), info.get('index'))
         stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
                         channels=f.getnchannels(),
-                        rate=int(f.getframerate()*1),
+                        rate=int(f.getframerate()*1.1),
                         output=True,
                         output_device_index=device
                         )
@@ -69,17 +103,16 @@ def play_audio(n, device=None):
         stream.stop_stream()
         stream.close()
         p.terminate()
-        print(f"Device {device} worked")
-    if device is None:
-        os.remove(f"./voice/{n}.wav")
+    os.remove(f"./voice/{n}.wav")
 
 
 def gen_wav(responsearr, n):
+    time1 = time.time()
     try:
         tts.tts_to_file(text=responsearr[n] + "\n\n",
                         file_path=f"./voice/{n}.wav",
                         speaker_wav=tts_conf["speaker_wav"],
-                        language="en",
+                        language=tts_conf["language"],
                         split_sentences=False,
                         )
     except Exception as e:
@@ -87,25 +120,46 @@ def gen_wav(responsearr, n):
         tts.tts_to_file(text="filtered",
                         file_path=f"./voice/{n}.wav",
                         speaker_wav=tts_conf["speaker_wav"],
-                        language="en",
+                        language=tts_conf["language"],
                         split_sentences=False,
                         )
+    print(f"TTS took {time.time()-time1} seconds")
 
 
 def main():
     while True:
 
-        prompt = input("Question: ")
-        response = ""
+        p = pyaudio.PyAudio()
+        devices = p.get_device_count()
+        cable = None
+        for i in range(devices):
+            device_info = p.get_device_info_by_index(i)
+            if "CABLE Input (VB-Audio Virtual C" in device_info.get('name'):
+                cable = device_info.get('index')
+                break
+            if "Microphone (USB PnP Audio Devic" in device_info.get('name'):
+                microphone = device_info.get('index')
 
-        if prompt in ["exit", "quit", "stop", "q", ":q"]:
+        prompt = input("Question: ")
+        if prompt.lower() in ["exit", "quit", "stop", "q", ":q"]:
             break
+
+        record_audio(microphone)
+        time1 = time.time()
+        prompt = w_model.transcribe(f"./voice/recorded.wav")["text"]
+        print(f"Transcription took {time.time()-time1} seconds")
+        os.remove(f"./voice/recorded.wav")
+
+        print(f"Prompt ===> {prompt}")
+
+        response = ""
 
         messages.append({"role": "user", "content": prompt})
 
         if len(messages) > 5:
             messages.pop(1)
 
+        time1 = time.time()
         stream = llm.create_chat_completion(
             messages=messages,
             stream=True,
@@ -113,12 +167,15 @@ def main():
             temperature=llm_conf["temperature"],
         )
 
+        print("Response ===>")
+
         for s in stream:
             parsed = s['choices'][0]['delta']
             keys = list(parsed.keys())
             if len(keys) > 0 and not "assistant" == parsed[keys[0]]:
                 print(parsed[keys[0]], end="", flush=True)
                 response += parsed[keys[0]]
+        print()
 
         messages.append({"role": "assistant", "content": response})
 
@@ -151,15 +208,8 @@ def main():
             else:
                 i += 1
 
-        p = pyaudio.PyAudio()
-        devices = p.get_device_count()
-        cable = None
-        for i in range(devices):
-            device_info = p.get_device_info_by_index(i)
-            if "CABLE Input (VB-Audio Virtual C" in device_info.get('name'):
-                print(f"Device {device_info.get('index')} is {device_info.get('name')}")
-                cable = device_info.get('index')
-                break
+        print(f"LLM took {time.time()-time1} seconds")
+
 
         gen_wav(responsearr, 0)
 
