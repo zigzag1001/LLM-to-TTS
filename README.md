@@ -1,5 +1,11 @@
 # Basic interactive LLM to voice pipeline project
 
+## Demo (turn on the sound)
+
+https://github.com/zigzag1001/LLM-to-TTS/assets/72932714/8a05de3e-0428-424c-826e-2b234450662d
+
+
+
 ## Requirements
 - llama-cpp-python (+ compatible models)
 - TTS
