@@ -6,6 +6,7 @@ from TTS.api import TTS
 import threading
 import pyaudio
 import whisper
+import audioop
 import wave
 import json
 import sys
@@ -25,7 +26,7 @@ tts = TTS(model_name=tts_conf["model_name"]).to(device)
 print(f"TTS load took {time.time()-time1} seconds")
 
 time1 = time.time()
-w_model = whisper.load_model("base.en")
+w_model = whisper.load_model("small.en")
 print(f"Whisper load took {time.time()-time1} seconds")
 
 if not os.path.exists('./voice'):
@@ -74,16 +75,44 @@ def record_audio(device=None):
                     input=True,
                     input_device_index=device
                     )
+        # get silence threshold
+        # ???
+        silence_threshold = 1500
+        silences_detected = 0
+        silences_allowed = 50
+        frames = []
+
+        # wait for user to start speaking (> silence threshold)
+        print("Speak now...")
+        while True:
+            data = stream.read(2048)
+            if audioop.rms(data, 2) > silence_threshold:
+                frames.append(data)
+                break
+
+        # wait for user to stop speaking (< silence threshold)
         print("Recording...")
-        data = stream.read(44100*5)
+        while True:
+            data = stream.read(1024)
+            frames.append(data)
+            if audioop.rms(data, 2) < silence_threshold:
+                silences_detected += 1
+                print(f"Silence detected: {silences_detected}")
+                if silences_detected > silences_allowed:
+                    break
+            else:
+                silences_detected = 0
+
         print("Recording stopped")
+
+        # data = stream.read(44100*5)
         stream.stop_stream()
         stream.close()
         p.terminate()
         f.setnchannels(1)
         f.setsampwidth(p.get_sample_size(pyaudio.paInt16))
         f.setframerate(44100)
-        f.writeframes(data)
+        f.writeframes(b''.join(frames))
 
 
 def play_audio(n, device=None):
@@ -127,6 +156,7 @@ def gen_wav(responsearr, n):
 
 
 def main():
+    input("Press enter to start")
     while True:
 
         p = pyaudio.PyAudio()
@@ -140,7 +170,8 @@ def main():
             if "Microphone (USB PnP Audio Devic" in device_info.get('name'):
                 microphone = device_info.get('index')
 
-        prompt = input("Question: ")
+        # prompt = input("Question: ")
+        prompt = "Question: "
         if prompt.lower() in ["exit", "quit", "stop", "q", ":q"]:
             break
 
@@ -148,9 +179,13 @@ def main():
         time1 = time.time()
         prompt = w_model.transcribe(f"./voice/recorded.wav")["text"]
         print(f"Transcription took {time.time()-time1} seconds")
-        os.remove(f"./voice/recorded.wav")
+        # os.remove(f"./voice/recorded.wav")
 
         print(f"Prompt ===> {prompt}")
+
+        if prompt == "" or "thanks for watching" in prompt.lower():
+            print("No prompt detected")
+            continue
 
         response = ""
 
@@ -175,7 +210,7 @@ def main():
             if len(keys) > 0 and not "assistant" == parsed[keys[0]]:
                 print(parsed[keys[0]], end="", flush=True)
                 response += parsed[keys[0]]
-        print()
+        print("\n===========\n")
 
         messages.append({"role": "assistant", "content": response})
 
