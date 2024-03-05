@@ -61,7 +61,7 @@ def process_pcm(device=None):
                     frames_per_buffer=1024
                     )
     while True:
-        print(".", end="")
+        print(".", end="", flush=True)
         data = data_queue.get()
         stream.write(data)
     stream.stop_stream()

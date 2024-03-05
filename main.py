@@ -62,7 +62,6 @@ system_prompt = {
         "role": "system",
         "content": llm_conf["system_prompt"]
 }
-messages = [system_prompt]
 
 
 def record_audio(device=None):
@@ -121,7 +120,7 @@ def play_audio(n, device=None):
         info = p.get_device_info_by_index(device)
         stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
                         channels=f.getnchannels(),
-                        rate=int(f.getframerate()*1.15),
+                        rate=int(f.getframerate()*1.1),
                         output=True,
                         output_device_index=device
                         )
@@ -157,6 +156,7 @@ def gen_wav(responsearr, n):
 
 def main():
     input("Press enter to start")
+    messages = [system_prompt]
     while True:
 
         p = pyaudio.PyAudio()
@@ -194,6 +194,14 @@ def main():
 
         if prompt == "" or any(h in prompt.strip().lower() for h in hallucinations):
             print("No prompt detected")
+            continue
+
+        commands = ["reset"]
+        clean_prompt = "".join(char for char in prompt if char.isalpha()).strip().lower()
+        print(clean_prompt)
+        if clean_prompt in commands:
+            if clean_prompt == "reset":
+                messages = [system_prompt]
             continue
 
         response = ""
