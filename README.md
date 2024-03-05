@@ -29,3 +29,9 @@ https://github.com/zigzag1001/LLM-to-TTS/assets/72932714/8a05de3e-0428-424c-826e
 - Often came across torch not detecting CUDA
 - To fix torch, install using [this](https://pytorch.org/get-started/locally/)
 
+##### discord bot
+- You can technically put a discord bot in the pipeline
+- bot.py file is how i did it (very jank)
+- you just have to create a .env with your TOKEN="yourtoken"
+- and edit the code that gets device indexes (`cable` is where the prompt goes, `microphone` is where the TTS responds)
+- so discord->Cable Input->Cable Output->whisper->LLM->TTS->VoiceMeeter Input->VoiceMeeter Output->discord
