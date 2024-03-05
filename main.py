@@ -65,6 +65,7 @@ system_prompt = {
 
 
 def record_audio(device=None):
+    global audio_thread
     with wave.open(f"./voice/recorded.wav", 'wb') as f:
         p = pyaudio.PyAudio()
         info = p.get_device_info_by_index(device)
@@ -86,6 +87,8 @@ def record_audio(device=None):
         while True:
             data = stream.read(2048)
             if audioop.rms(data, 2) > silence_threshold:
+                if audio_thread is not None:
+                    audio_thread.join()
                 frames.append(data)
                 break
 
@@ -153,8 +156,11 @@ def gen_wav(responsearr, n):
                         )
     print(f"TTS took {time.time()-time1} seconds")
 
+global audio_thread
+audio_thread = None
 
 def main():
+    global audio_thread
     input("Press enter to start")
     messages = [system_prompt]
     while True:

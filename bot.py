@@ -101,6 +101,26 @@ def callback(user, data):
     data_queue.put(data.pcm)
 
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    bot_voice_channel = member.guild.voice_client
+    if bot_voice_channel is None:
+        return
+    # stop if bot is alone in voice channel
+    if bot_voice_channel.channel.members == [bot.user]:
+        print(f"{member.guild.name} - Bot alone, leaving...")
+        await stop(None, member.guild)
+        return
+    # stop if bot is force disconnected from voice channel
+    if member == bot.user and member not in bot_voice_channel.channel.members:
+        print(
+            f"{member.guild.name} - Bot force disconnected, leaving..."
+        )
+        await stop(None, member.guild)
+        return
+
+
+
 @bot.command(name='join', help='Listens to the voice channel', aliases=['j'])
 async def join(ctx):
     if not is_connected(ctx):
@@ -114,8 +134,12 @@ async def join(ctx):
         listen_to_voice_channel(ctx, vc)
 
 @bot.command(name='stop', help='Leaves the voice channel', aliases=['st', 'leave', 'l'])
-async def stop(ctx):
-    await ctx.voice_client.disconnect()
+async def stop(ctx=None, guild=None):
+    if guild is None:
+        guild = ctx.guild
+    voice_client = get(bot.voice_clients, guild=guild)
+    if voice_client and voice_client.is_connected():
+        await voice_client.disconnect()
 
 
 bot.run(TOKEN)
