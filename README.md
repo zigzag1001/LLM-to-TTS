@@ -10,6 +10,12 @@ https://github.com/zigzag1001/LLM-to-TTS/assets/72932714/8a05de3e-0428-424c-826e
 - llama-cpp-python (+ compatible models)
 - TTS
 - PyAudio
+- OpenAi whisper
+- ===For the bot part:
+- [discord-ext-voice-recv](https://github.com/imayhaveborkedit/discord-ext-voice-recv)
+- [dev version of discord.py](https://github.com/Rapptz/discord.py#installing)
+- [virtual audio cable + voicemeeter](https://vb-audio.com/)
+- python_dotenv
 
 ### Usage
 1. `python3 main.py`
@@ -18,8 +24,8 @@ https://github.com/zigzag1001/LLM-to-TTS/assets/72932714/8a05de3e-0428-424c-826e
 4. Repeat 3
 
 #### Notes
-- Currently using/tested mistral dolphin
-- For tts using Xtts_v2
+- Currently using/tested mistral dolphin 2.1 and nous hermes 2
+- For tts using ~~Xtts_v2~~ Vits (theres probably better options)
 - Often came across torch not detecting CUDA
 - To fix torch, install using [this](https://pytorch.org/get-started/locally/)
 
