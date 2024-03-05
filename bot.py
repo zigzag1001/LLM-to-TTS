@@ -61,7 +61,7 @@ def process_pcm(device=None):
                     frames_per_buffer=1024
                     )
     while True:
-        print("Processing")
+        print(".", end="")
         data = data_queue.get()
         stream.write(data)
     stream.stop_stream()
@@ -98,20 +98,11 @@ def listen_to_voice_channel(ctx, vc):
         print("Already listening")
 
 def callback(user, data):
-    print(f"User: {user}")
-    if "0x3e9" in str(user).strip().lower():
-        data_queue.put(data.pcm)
+    data_queue.put(data.pcm)
 
-@bot.command(name='join', help='Joins/leaves the voice channel', aliases=['j'])
+
+@bot.command(name='join', help='Listens to the voice channel', aliases=['j'])
 async def join(ctx):
-    if is_connected(ctx):
-        await ctx.voice_client.disconnect()
-    else:
-        await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
-
-
-@bot.command(name='listen', help='Listens to the voice channel', aliases=['l'])
-async def listen(ctx):
     if not is_connected(ctx):
         vc = await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
         listen_to_voice_channel(ctx, vc)
@@ -122,7 +113,7 @@ async def listen(ctx):
         vc = get(bot.voice_clients, guild=ctx.guild)
         listen_to_voice_channel(ctx, vc)
 
-@bot.command(name='stop', help='Leaves the voice channel', aliases=['st'])
+@bot.command(name='stop', help='Leaves the voice channel', aliases=['st', 'leave', 'l'])
 async def stop(ctx):
     await ctx.voice_client.disconnect()
 
