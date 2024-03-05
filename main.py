@@ -77,9 +77,9 @@ def record_audio(device=None):
                     )
         # get silence threshold
         # ???
-        silence_threshold = 1500
+        silence_threshold = 10
         silences_detected = 0
-        silences_allowed = 50
+        silences_allowed = 25
         frames = []
 
         # wait for user to start speaking (> silence threshold)
@@ -121,7 +121,7 @@ def play_audio(n, device=None):
         info = p.get_device_info_by_index(device)
         stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
                         channels=f.getnchannels(),
-                        rate=int(f.getframerate()*1.1),
+                        rate=int(f.getframerate()*1.15),
                         output=True,
                         output_device_index=device
                         )
@@ -162,13 +162,20 @@ def main():
         p = pyaudio.PyAudio()
         devices = p.get_device_count()
         cable = None
+        microphone = None
         for i in range(devices):
             device_info = p.get_device_info_by_index(i)
-            if "CABLE Input (VB-Audio Virtual C" in device_info.get('name'):
-                cable = device_info.get('index')
-                break
-            if "Microphone (USB PnP Audio Devic" in device_info.get('name'):
+            # if "CABLE Input (VB-Audio Virtual C" in device_info.get('name'):
+            #     cable = device_info.get('index')
+            #     break
+            # if "Microphone (USB PnP Audio Devic" in device_info.get('name'):
+            #     microphone = device_info.get('index')
+            if "CABLE Output (VB-Audio Virtual" in device_info.get('name') and microphone is None:
                 microphone = device_info.get('index')
+            if "VoiceMeeter Input" in device_info.get('name') and cable is None:
+                cable = device_info.get('index')
+            if cable is not None and microphone is not None:
+                break
 
         # prompt = input("Question: ")
         prompt = "Question: "
@@ -183,7 +190,9 @@ def main():
 
         print(f"Prompt ===> {prompt}")
 
-        if prompt == "" or "thanks for watching" in prompt.lower():
+        hallucinations = ["thanks for watching", "thank you."]
+
+        if prompt == "" or any(h in prompt.strip().lower() for h in hallucinations):
             print("No prompt detected")
             continue
 
@@ -191,7 +200,7 @@ def main():
 
         messages.append({"role": "user", "content": prompt})
 
-        if len(messages) > 5:
+        if len(messages) > 10:
             messages.pop(1)
 
         time1 = time.time()

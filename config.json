@@ -1,6 +1,5 @@
 {
     "LLM": {
-        "1model_path": "models/dolphin-2.1-mistral-7b.Q4_K_M.gguf",
         "model_path": "models/",
         "chat_format": "chatml",
         "n_gpu_layers": -1,
