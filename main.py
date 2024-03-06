@@ -87,9 +87,9 @@ def record_audio(device=None):
         while True:
             data = stream.read(2048)
             if audioop.rms(data, 2) > silence_threshold:
+                frames.append(data)
                 if audio_thread is not None:
                     audio_thread.join()
-                frames.append(data)
                 break
 
         # wait for user to stop speaking (< silence threshold)
@@ -183,27 +183,42 @@ def main():
             if cable is not None and microphone is not None:
                 break
 
-        # prompt = input("Question: ")
+        """)))"""
+        # prompt = input("Question: ") # Type input
         prompt = "Question: "
         if prompt.lower() in ["exit", "quit", "stop", "q", ":q"]:
             break
 
-        record_audio(microphone)
+        # record_audio(microphone) # Record from device input
+
+        # bot.py records audio from each user
+        prompt = ""
+        prompts = {}
+        while os.listdir("./voice/user") == []:
+            time.sleep(0.1)
         time1 = time.time()
-        prompt = w_model.transcribe(f"./voice/recorded.wav")["text"]
+        for file in os.listdir("./voice/user"):
+            # prompts.append(w_model.transcribe(f"./voice/user/{file}")["text"])
+            prompts[file[:-4]] = w_model.transcribe(f"./voice/user/{file}")["text"]
+            os.remove(f"./voice/user/{file}")
         print(f"Transcription took {time.time()-time1} seconds")
-        # os.remove(f"./voice/recorded.wav")
+
+        for key, value in prompts.items():
+            print(f"User {key}: {value}")
+            prompt += f"{key}: {value}\n"
+        prompt_no_user = "".join(prompt.split(":")[1:])
+        # end bot.py recording implementation
 
         print(f"Prompt ===> {prompt}")
 
         hallucinations = ["thanks for watching", "thank you."]
 
-        if prompt == "" or any(h in prompt.strip().lower() for h in hallucinations):
+        if prompt == "" or any(h in prompt_no_user.strip().lower() for h in hallucinations):
             print("No prompt detected")
             continue
 
         commands = ["reset"]
-        clean_prompt = "".join(char for char in prompt if char.isalpha()).strip().lower()
+        clean_prompt = "".join(char for char in prompt_no_user if char.isalpha()).lower().strip()
         print(clean_prompt)
         if clean_prompt in commands:
             if clean_prompt == "reset":
@@ -268,8 +283,11 @@ def main():
 
         print(f"LLM took {time.time()-time1} seconds")
 
+        if audio_thread is not None:
+            audio_thread.join()
 
         gen_wav(responsearr, 0)
+
 
         audio_thread = threading.Thread(target=play_audio, args=(0, cable, ))
         audio_thread.start()
