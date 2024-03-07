@@ -93,7 +93,7 @@ class record_user_audio(threading.Thread):
     def run(self):
         global user_threads
         silence_threshold = 10
-        silences_allowed = 10
+        silences_allowed = 16
         loud_allowed = 10
         q = user_threads[self.user]["queue"]
 
@@ -242,7 +242,7 @@ async def on_voice_state_update(member, before, after):
     if bot_voice_channel is None:
         return
     # stop if bot is alone in voice channel
-    if bot_voice_channel.channel.members == [bot.user]:
+    elif bot_voice_channel.channel.members == [bot.user]:
         print(f"{member.guild.name} - Bot alone, leaving...")
         await stop(None, member.guild)
         return
@@ -253,6 +253,8 @@ async def on_voice_state_update(member, before, after):
         )
         await stop(None, member.guild)
         return
+    # if user leaves bots voice channel, stop thread and delete wav
+    # TODO
 
 
 
@@ -272,9 +274,11 @@ async def join(ctx):
 async def stop(ctx=None, guild=None):
     global user_threads
     for user in user_threads.keys():
+        print(f"Stopping thread for {user}")
         user_threads[user]["thread"].stop()
-        if os.path.exists(f"./voice/user{user}.wav"):
-            os.remove(f"./voice/user{user}.wav")
+        if os.path.exists(f"./voice/user/{user}.wav"):
+            print(f"Deleting {user}.wav")
+            os.remove(f"./voice/user/{user}.wav")
     if guild is None:
         guild = ctx.guild
     voice_client = get(bot.voice_clients, guild=guild)

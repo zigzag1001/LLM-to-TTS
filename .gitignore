@@ -2,3 +2,4 @@
 models/*
 venv/
 .env
+config.json
