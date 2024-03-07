@@ -26,21 +26,27 @@ https://github.com/zigzag1001/LLM-to-TTS/assets/72932714/f1d20287-4ed4-4533-9879
 - [virtual audio cable + voicemeeter](https://vb-audio.com/)
 - python_dotenv
 
+### Install
+- clone repo
+- create venv and pip install requirements.txt into it
+- - [dev version of discord.py](https://github.com/Rapptz/discord.py#installing)
+- find devices (TTS input, output) (Im currently using `VoiceMeeter Input`, `VoiceMeeter Out`)
+- `python get_audio_devices.py`
+- copy the names of the devices into appropriate place in main.py and bot.py
+- main.py gets the input, bot.py gets the output
+- create .env and set TOKEN="your discord bot token"
+- download llama.cpp compatible models into ./models
+- edit config.json
+
 ### Usage
-1. `python3 main.py`
-2. Select model using numbers
-3. Enter prompt
-4. Repeat 3
+- launch both main and bot
+- press enter in main to start
+- join vc and ping bot join
+- `@yourbot join`
+- it probably wont work because i forgot to mention something
 
 #### Notes
 - Currently using/tested mistral dolphin 2.1 and nous hermes 2
 - For tts using ~~Xtts_v2~~ Vits (theres probably better options)
 - Often came across torch not detecting CUDA
 - To fix torch, install using [this](https://pytorch.org/get-started/locally/)
-
-##### discord bot
-- You can technically put a discord bot in the pipeline
-- bot.py file is how i did it (very jank)
-- you just have to create a .env with your TOKEN="yourtoken"
-- and edit the code that gets device indexes (`cable` is where the prompt goes, `microphone` is where the TTS responds)
-- so discord->Cable Input->Cable Output->whisper->LLM->TTS->VoiceMeeter Input->VoiceMeeter Output->discord
