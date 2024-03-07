@@ -171,13 +171,11 @@ def main():
         microphone = None
         for i in range(devices):
             device_info = p.get_device_info_by_index(i)
-            # if "CABLE Input (VB-Audio Virtual C" in device_info.get('name'):
-            #     cable = device_info.get('index')
-            #     break
-            # if "Microphone (USB PnP Audio Devic" in device_info.get('name'):
-            #     microphone = device_info.get('index')
+            # Set this string to your microphone
             if "CABLE Output (VB-Audio Virtual" in device_info.get('name') and microphone is None:
                 microphone = device_info.get('index')
+            # Set this string to the input of the output device
+            # (the bot will play audio from this device)
             if "VoiceMeeter Input" in device_info.get('name') and cable is None:
                 cable = device_info.get('index')
             if cable is not None and microphone is not None:
@@ -297,12 +295,6 @@ def main():
             audio_thread.join()
             audio_thread = threading.Thread(target=play_audio, args=(i, cable, ))
             audio_thread.start()
-
-        # devices = [4, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18, 25, 27, 29, 32, 34]
-        # gen_wav(responsearr, 0)
-        #
-        # for i in devices:
-        #     play_audio(0, i)
 
 
 

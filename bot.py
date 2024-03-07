@@ -33,20 +33,18 @@ if not os.path.exists(f"./voice/user"):
 user_threads = {}
 p = pyaudio.PyAudio()
 devices = p.get_device_count()
-cable = None
 microphone = None
+
 for i in range(devices):
     device_info = p.get_device_info_by_index(i)
-    if "CABLE Input (VB-Audio Virtual" in device_info.get('name') and cable is None:
-        cable = device_info.get('index')
-        print(f"Found cable at {cable}")
-    if "VoiceMeeter Out" in device_info.get('name') and microphone is None:
+    if "VoiceMeeter Out" in device_info.get('name'): # EDIT THIS STRING TO YOUR AUDIO PIPE METHOD
         microphone = device_info.get('index')
-        print(f"Found microphone at {microphone}")
-    if cable is not None and microphone is not None:
+        print(f"Found bots microphone at {microphone}")
+        print(device_info.get('name'))
         break
 p.terminate()
-""")"""
+
+
 def is_connected(ctx):
     voice_client = get(bot.voice_clients, guild=ctx.guild)
     return voice_client and voice_client.is_connected()
@@ -143,55 +141,7 @@ class record_user_audio(threading.Thread):
 
 
 
-#         
-# def record_audio(device=None):
-#     CHANNELS = Decoder.CHANNELS
-#     SAMPLE_WIDTH = Decoder.SAMPLE_SIZE // CHANNELS
-#     SAMPLE_RATE = Decoder.SAMPLING_RATE
-#     # get silence threshold
-#     # ???
-#     silence_threshold = 10
-#     silences_detected = 0
-#     silences_allowed = 25
-#     frames = []
-#
-#     while True:
-#         # wait for user to start speaking (> silence threshold)
-#         print("Speak now...")
-#         user = None
-#         while True:
-#             data = data_queue.get()[1]
-#             if audioop.rms(data, 2) > silence_threshold:
-#                 user = data_queue.get()[0]
-#                 frames.append(data)
-#                 break
-#
-#         # wait for user to stop speaking (< silence threshold)
-#         print("Recording...")
-#         while True:
-#             if user is None:
-#                 break
-#             data = data_queue.get()[1]
-#             if data_queue.get()[0] == user:
-#                 frames.append(data)
-#                 if audioop.rms(data, 2) < silence_threshold:
-#                     silences_detected += 1
-#                     print(f"Silence detected: {silences_detected}")
-#                     if silences_detected > silences_allowed:
-#                         break
-#                 else:
-#                     silences_detected = 0
-#
-#         print("Recording stopped")
-#         if is None:
-#             continue
-#
-#         # data = stream.read(44100*5)
-#         with wave.open(f"./voice/{user}.wav", 'wb') as f:
-#             f.setnchannels(CHANNELS)
-#             f.setsampwidth(p.get_sample_size(SAMPLE_WIDTH))
-#             f.setframerate(SAMPLE_RATE)
-#             f.writeframes(b''.join(frames))
+             f.writeframes(b''.join(frames))
 
 class PyAudioPCM(discord.AudioSource):
     def __init__(self, channels=2, rate=48000, chunk=960, input_device=1) -> None:
@@ -263,8 +213,6 @@ async def join(ctx):
     if not is_connected(ctx):
         vc = await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
         listen_to_voice_channel(ctx, vc)
-        # listner_t = threading.Thread(target=process_pcm, args=(cable,), daemon=True)
-        # listner_t.start()
         await play_audio_in_voice(ctx, microphone)
     else:
         vc = get(bot.voice_clients, guild=ctx.guild)
