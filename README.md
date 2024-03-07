@@ -1,8 +1,14 @@
 # Basic interactive LLM to voice pipeline project
 
-## Demo (turn on the sound)
+---
+Currently changing lots of things so README is probably outdated in some parts
+---
+Create an issue and i might update it & help
+---
 
-https://github.com/zigzag1001/LLM-to-TTS/assets/72932714/8a05de3e-0428-424c-826e-2b234450662d
+### Demo
+
+(Soon tm)
 
 
 
