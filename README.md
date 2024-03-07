@@ -6,9 +6,12 @@ Currently changing lots of things so README is probably outdated in some parts
 Create an issue and i might update it & help
 ---
 
-### Demo
+### Demo (turn on the sound)
 
-(Soon tm)
+
+
+https://github.com/zigzag1001/LLM-to-TTS/assets/72932714/f1d20287-4ed4-4533-9879-c7b2e9d4f557
+
 
 
 
