@@ -54,6 +54,7 @@ llm = Llama(
     n_ctx=llm_conf["n_ctx"],
     verbose=False,
 )
+
 print(f"LLM load took {time.time()-time1} seconds")
 
 prompt = "Question: "
@@ -62,7 +63,6 @@ system_prompt = {
         "role": "system",
         "content": llm_conf["system_prompt"]
 }
-
 
 def record_audio(device=None):
     global audio_thread
@@ -156,6 +156,7 @@ def gen_wav(responsearr, n):
                         )
     print(f"TTS took {time.time()-time1} seconds")
 
+
 global audio_thread
 audio_thread = None
 
@@ -183,6 +184,7 @@ def main():
 
         """)))"""
         # prompt = input("Question: ") # Type input
+        # prompt_no_user = prompt
         prompt = "Question: "
         if prompt.lower() in ["exit", "quit", "stop", "q", ":q"]:
             break
@@ -191,6 +193,7 @@ def main():
 
         # bot.py records audio from each user
         prompt = ""
+        prompt_no_user = ""
         prompts = {}
         while os.listdir("./voice/user") == []:
             time.sleep(0.1)
@@ -198,18 +201,20 @@ def main():
         for file in os.listdir("./voice/user"):
             # prompts.append(w_model.transcribe(f"./voice/user/{file}")["text"])
             prompts[file[:-4]] = w_model.transcribe(f"./voice/user/{file}")["text"]
+            if audio_thread is not None:
+                audio_thread.join()
             os.remove(f"./voice/user/{file}")
         print(f"Transcription took {time.time()-time1} seconds")
 
         for key, value in prompts.items():
             print(f"User {key}: {value}")
             prompt += f"{key}: {value}\n"
-        prompt_no_user = "".join(prompt.split(":")[1:])
+            prompt_no_user += value
         # end bot.py recording implementation
 
         print(f"Prompt ===> {prompt}")
 
-        hallucinations = ["thanks for watching", "thank you."]
+        hallucinations = ["thanks for watching", "thank you.", "bye."]
 
         if prompt == "" or any(h in prompt_no_user.strip().lower() for h in hallucinations):
             print("No prompt detected")
@@ -287,7 +292,7 @@ def main():
         gen_wav(responsearr, 0)
 
 
-        audio_thread = threading.Thread(target=play_audio, args=(0, cable, ))
+        audio_thread = threading.Thread(target=play_audio, args=(0, cable, ), daemon=True)
         audio_thread.start()
 
         for i in range(1, len(responsearr)):

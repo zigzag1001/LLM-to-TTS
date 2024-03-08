@@ -138,10 +138,7 @@ class record_user_audio(threading.Thread):
                 f.setsampwidth(self.SAMPLE_WIDTH)
                 f.setframerate(self.SAMPLE_RATE)
                 f.writeframes(b''.join(frames))
-
-
-
-             f.writeframes(b''.join(frames))
+            time.sleep(5)
 
 class PyAudioPCM(discord.AudioSource):
     def __init__(self, channels=2, rate=48000, chunk=960, input_device=1) -> None:
@@ -221,9 +218,11 @@ async def join(ctx):
 @bot.command(name='stop', help='Leaves the voice channel', aliases=['st', 'leave', 'l'])
 async def stop(ctx=None, guild=None):
     global user_threads
-    for user in user_threads.keys():
+    users = list(user_threads.keys())
+    for user in users:
         print(f"Stopping thread for {user}")
         user_threads[user]["thread"].stop()
+        del user_threads[user]
         if os.path.exists(f"./voice/user/{user}.wav"):
             print(f"Deleting {user}.wav")
             os.remove(f"./voice/user/{user}.wav")
