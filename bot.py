@@ -29,11 +29,25 @@ ffmpeg_opts = {
 
 if not os.path.exists(f"./voice/user"):
     os.makedirs(f"./voice/user")
+else:
+    for file in os.listdir(f"./voice/user"):
+        os.remove(f"./voice/user/{file}")
 
 user_threads = {}
+ignored_users = []
 p = pyaudio.PyAudio()
 devices = p.get_device_count()
 microphone = None
+
+
+if os.path.exists("ignored_users.txt"):
+    with open("ignored_users.txt", "r") as f:
+        users = f.read().splitlines()
+    for user in users:
+        if user.isdigit():
+            ignored_users.append(int(user))
+        else:
+            print(f"User {user} is not a valid ID")
 
 for i in range(devices):
     device_info = p.get_device_info_by_index(i)
@@ -79,7 +93,8 @@ class record_user_audio(threading.Thread):
 
     def __init__(self, user):
         super(record_user_audio, self).__init__()
-        self.user = user
+        self.user = user.name
+        self.userid = user.id
         self._stop = threading.Event()
 
     def stop(self):
@@ -93,7 +108,7 @@ class record_user_audio(threading.Thread):
         silence_threshold = 10
         silences_allowed = 16
         loud_allowed = 10
-        q = user_threads[self.user]["queue"]
+        q = user_threads[self.userid]["queue"]
 
         while True:
             if self.stopped():
@@ -171,16 +186,19 @@ def listen_to_voice_channel(ctx, vc):
 
 def callback(user, data):
     global user_threads
+    global ignored_users
+    if user.id in ignored_users:
+        return
     # if user thread does not exist, create it
-    if str(user) not in user_threads.keys():
+    if user.id not in user_threads.keys():
         print(f"Creating thread for {user}")
-        user_threads[str(user)] = {}
-        user_threads[str(user)]["thread"] = record_user_audio(str(user))
-        user_threads[str(user)]["queue"] = queue.Queue()
-        user_threads[str(user)]["queue"].put(data.pcm)
-        user_threads[str(user)]["thread"].start()
+        user_threads[user.id] = {}
+        user_threads[user.id]["thread"] = record_user_audio(user)
+        user_threads[user.id]["queue"] = queue.Queue()
+        user_threads[user.id]["queue"].put(data.pcm)
+        user_threads[user.id]["thread"].start()
     else:
-        user_threads[str(user)]["queue"].put(data.pcm)
+        user_threads[user.id]["queue"].put(data.pcm)
 
 
 @bot.event
@@ -202,7 +220,6 @@ async def on_voice_state_update(member, before, after):
         return
     # if user leaves bots voice channel, stop thread and delete wav
     # TODO
-
 
 
 @bot.command(name='join', help='Listens to the voice channel', aliases=['j'])
@@ -232,5 +249,64 @@ async def stop(ctx=None, guild=None):
     if voice_client and voice_client.is_connected():
         await voice_client.disconnect()
 
+@bot.command(name='ignore', help='Ignores the specified user', aliases=['i'])
+async def ignore(ctx, userid: str = None):
+    global user_threads
+    global ignored_users
+    if userid is None:
+        userid = ctx.author.id
+    if not userid.isdigit():
+        await ctx.send("Invalid user id")
+        return
+    userid = int(userid)
+    if userid not in ignored_users:
+        ignored_users.append(userid)
+        await ctx.send(f"Ignoring {userid}")
+        with open("ignored_users.txt", "a") as f:
+            f.write(f"{userid}\n")
+    if userid in user_threads.keys():
+        user_threads[userid]["thread"].stop()
+        del user_threads[userid]
+        if os.path.exists(f"./voice/user/{userid}.wav"):
+            os.remove(f"./voice/user/{userid}.wav")
+    print(f"Ignoring {ctx.guild.get_member(int(userid)).name}")
 
+@bot.command(name='unignore', help='Unignores the specified user', aliases=['ui'])
+async def unignore(ctx, userid: str = None):
+    global ignored_users
+    if userid is None:
+        userid = ctx.author.id
+    if not userid.isdigit():
+        await ctx.send("Invalid user id")
+        return
+    userid = int(userid)
+    if userid in ignored_users:
+        ignored_users.remove(userid)
+        await ctx.send(f"Unignoring {userid}")
+        with open("ignored_users.txt", "r") as f:
+            lines = f.readlines()
+        with open("ignored_users.txt", "w") as f:
+            for line in lines:
+                if line.strip("\n") != str(userid):
+                    f.write(line)
+    print(f"Unignoring {ctx.guild.get_member(int(userid)).name}")
+
+@bot.command(name='ignoredlist', help='Lists the ignored users', aliases=['il', 'ignored'])
+async def ignoredlist(ctx):
+    global ignored_users
+    users = []
+    for user in ignored_users:
+        users.append(ctx.guild.get_member(int(user)).name)
+    await ctx.send(f"Ignored users: {users}")
+
+@bot.command(name='activethreads', help='Lists the active threads', aliases=['at'])
+async def activethreads(ctx):
+    global user_threads
+    active_threads = list(user_threads.keys())
+    users = []
+    for user in active_threads:
+        users.append(ctx.guild.get_member(int(user)).name)
+    await ctx.send(f"Active threads: {users}")
+
+    
 bot.run(TOKEN)

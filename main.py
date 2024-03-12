@@ -7,6 +7,7 @@ import threading
 import pyaudio
 import whisper
 import audioop
+import random
 import wave
 import json
 import sys
@@ -177,7 +178,9 @@ def main():
                 microphone = device_info.get('index')
             # Set this string to the input of the output device
             # (the bot will play audio from this device)
-            if "VoiceMeeter Input" in device_info.get('name') and cable is None:
+            # if "VoiceMeeter Input" in device_info.get('name') and cable is None:
+            #     cable = device_info.get('index')
+            if "CABLE Input (VB-Audio Virtual" in device_info.get('name') and cable is None:
                 cable = device_info.get('index')
             if cable is not None and microphone is not None:
                 break
@@ -232,8 +235,14 @@ def main():
 
         messages.append({"role": "user", "content": prompt})
 
+        # limit messages to 10
         if len(messages) > 10:
             messages.pop(1)
+
+        # make chatting more interesting
+        if len(messages) > 5 and random.randint(0, 4) == 4:
+            messages = [system_prompt]
+            print("Resetting messages")
 
         time1 = time.time()
         stream = llm.create_chat_completion(
@@ -252,6 +261,13 @@ def main():
                 print(parsed[keys[0]], end="", flush=True)
                 response += parsed[keys[0]]
         print("\n===========\n")
+
+        if ":" in response:
+            response = response.split(":")[1]
+            print("rm :")
+        if "#" in response:
+            response = response.split("#")[0]
+            print("rm #")
 
         messages.append({"role": "assistant", "content": response})
 
