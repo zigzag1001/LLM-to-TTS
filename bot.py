@@ -51,12 +51,17 @@ if os.path.exists("ignored_users.txt"):
 
 for i in range(devices):
     device_info = p.get_device_info_by_index(i)
-    if "VoiceMeeter Out" in device_info.get('name'): # EDIT THIS STRING TO YOUR AUDIO PIPE METHOD
+    # if "VoiceMeeter Out" in device_info.get('name'): # EDIT THIS STRING TO YOUR AUDIO PIPE METHOD
+    if "CABLE Out" in device_info.get('name'):
         microphone = device_info.get('index')
         print(f"Found bots microphone at {microphone}")
         print(device_info.get('name'))
         break
 p.terminate()
+
+if microphone is None:
+    print("No microphone found, exiting...")
+    exit()
 
 
 def is_connected(ctx):
