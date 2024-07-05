@@ -111,7 +111,7 @@ class record_user_audio(threading.Thread):
     def run(self):
         global user_threads
         silence_threshold = 10
-        silences_allowed = 16
+        silences_allowed = 13
         loud_allowed = 10
         q = user_threads[self.userid]["queue"]
 
@@ -196,6 +196,8 @@ def callback(user, data):
         return
     # if user thread does not exist, create it
     if user.id not in user_threads.keys():
+        if user.guild.voice_client is None:
+            return
         print(f"Creating thread for {user}")
         user_threads[user.id] = {}
         user_threads[user.id]["thread"] = record_user_audio(user)

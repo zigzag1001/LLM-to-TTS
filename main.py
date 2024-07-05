@@ -8,12 +8,12 @@ import threading
 import pyaudio
 # import whisper
 from faster_whisper import WhisperModel
-import audioop
 import random
 import wave
 import json
-import sys
 import os
+
+USE_WHISPER = True
 
 print(f"Imports took {time.time()-time1} seconds")
 
@@ -60,7 +60,7 @@ else:
 time1 = time.time()
 llm = Llama(
     model_path=llm_file,
-    chat_format=llm_conf["chat_format"],
+    # chat_format=llm_conf["chat_format"],
     n_gpu_layers=llm_conf["n_gpu_layers"],
     n_ctx=llm_conf["n_ctx"],
     verbose=False,
@@ -81,6 +81,15 @@ if audio_conf["device"] is None:
     with open("config.json", "w") as f:
         json.dump(config, f, indent=4)
 
+# cleans path if exists
+# if not exists, creates path
+def clean_folder(path):
+    if os.path.exists(path):
+        for file in os.listdir(path):
+            os.remove(f"{path}/{file}")
+    else:
+        os.makedirs(path)
+
 # Plays audio from a file in the voice folder
 # through the specified device
 # delete the file after playing
@@ -90,7 +99,8 @@ def play_audio(n, device=None):
         info = p.get_device_info_by_index(device)
         stream = p.open(format=p.get_format_from_width(f.getsampwidth()),
                         channels=f.getnchannels(),
-                        rate=int(f.getframerate()*1.1),
+                        # rate=int(f.getframerate()*1.1),
+                        rate=int(f.getframerate()),
                         output=True,
                         output_device_index=device
                         )
@@ -102,6 +112,9 @@ def play_audio(n, device=None):
         stream.close()
         p.terminate()
     os.remove(f"./voice/{n}.wav")
+    # for file in os.listdir("./voice/user/"):
+    #     if file.endswith(".wav"):
+    #         os.remove(f"./voice/user/{file}")
 
 
 # Generates audio from a response and saves it to a file in the voice folder
@@ -125,14 +138,6 @@ def gen_wav(responsearr, n):
     print(f"TTS took {time.time()-time1} seconds")
 
 
-# cleans path if exists
-# if not exists, creates path
-def clean_folder(path):
-    if os.path.exists(path):
-        for file in os.listdir(path):
-            os.remove(f"{path}/{file}")
-    else:
-        os.makedirs(path)
 
 
 
@@ -167,42 +172,47 @@ def main():
 
     while True:
 
-        # wait for user audio
-        while os.listdir("./voice/user") == []:
-            time.sleep(0.1)
-
-        total_time = time.time()
-
-        # transcribe into prompts dict
-        time1 = time.time()
-        prompts = {}
-
-        for file in os.listdir("./voice/user"):
-
-            # prompts[file[:-4]] = w_model.transcribe(f"./voice/user/{file}")["text"]
-            transcipt = ""
-            segments, _ = w_model.transcribe(f"./voice/user/{file}")
-            for segment in segments:
-                transcipt += segment.text + " "
-            prompts[file[:-4]] = transcipt
-
+        if USE_WHISPER:
             if audio_thread is not None:
                 audio_thread.join()
 
-            os.remove(f"./voice/user/{file}")
+            # wait for user audio
+            while os.listdir("./voice/user") == []:
+                time.sleep(0.1)
 
-        print(f"Transcription took {time.time()-time1} seconds")
+            total_time = time.time()
 
-        # ignore whisper hallucinations
-        hallucinations = ["thanks for watching", "thank you.", "bye."]
+            # transcribe into prompts dict
+            time1 = time.time()
+            prompts = {}
 
-        # remove prompts with hallucinations
-        for prompt in prompts.keys():
-            if prompts[prompt] == "" or any(h in prompts[prompt].strip().lower() for h in hallucinations):
-                del prompts[prompt]
+            for file in os.listdir("./voice/user"):
+
+                # prompts[file[:-4]] = w_model.transcribe(f"./voice/user/{file}")["text"]
+                transcipt = ""
+                segments, _ = w_model.transcribe(f"./voice/user/{file}")
+                for segment in segments:
+                    transcipt += segment.text + " "
+                prompts[file[:-4]] = transcipt
+
+                os.remove(f"./voice/user/{file}")
+
+            print(f"Transcription took {time.time()-time1} seconds")
+
+            # ignore whisper hallucinations
+            hallucinations = ["thanks for watching", "thank you.", "bye.", "Thank you very much."]
+
+            # remove prompts with hallucinations
+            temp_prompts = prompts.copy()
+            for prompt in temp_prompts.keys():
+                if prompts[prompt] == "" or any(h in prompts[prompt].strip().lower() for h in hallucinations):
+                    del prompts[prompt]
 
 
-        prompt = "\n".join([f"{prompt}: {prompts[prompt]}" for prompt in prompts.keys()])
+            prompt = "\n".join([f"{prompt}: {prompts[prompt]}" for prompt in prompts.keys()])
+        else:
+            prompt = input("Prompt: ")
+            total_time = time.time()
 
         messages.append({"role": "user", "content": prompt})
 
@@ -216,24 +226,36 @@ def main():
 
         response = llm.create_chat_completion(
                 messages=messages,
-                max_tokens=100,
+                max_tokens=250,
                 stop=["\n\n"],
-                )
+                temperature=1,
+                # top_p=0.99,
+                # top_k=100,
+                # min_p=0,
+                # typical_p=0.2,
+                # presence_penalty=1,
+                # frequency_penalty=2,
+                # repeat_penalty=1.5
+        )
 
         print(f"LLM took {time.time()-time1} seconds")
 
         response = response["choices"][0]["message"]["content"]
 
-        response = response.split("*")[0] + response.split("*")[-1]
+        if "*" in response:
+            response = response.split("*")[0] + response.split("*")[-1]
 
         if (random.random() < 0.5):
             response = response.lower()
+
+        response = "".join([c for c in response if c.isalnum() or c in [",", ".", "!", "?", " "]])
 
         print(response)
 
         messages.append({"role": "assistant", "content": response})
 
         gen_wav([response], 0)
+
 
         if audio_thread is not None:
             audio_thread.join()
