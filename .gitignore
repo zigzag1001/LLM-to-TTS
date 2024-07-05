@@ -4,3 +4,4 @@ venv/
 .env
 config.json
 ignored_users.txt
+__pycache__/
